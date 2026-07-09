@@ -477,8 +477,9 @@ export class ZentaoLegacyAPI {
         const seenStoryIds = new Set<number>();
 
         // 映射status参数到browseType
-        // 禅道11.3的product-browse支持 closed/changed 等browseType。
-        // 旧实现把 closed/all 都错误映射为 unclosed，导致无法直接读取已关闭需求。
+        // 禅道11.3产品需求页实际使用的是 *story 后缀的 browseType：
+        // allstory / activestory / draftstory / changedstory / closedstory。
+        // 不带 story 后缀的 all/active/draft/changed/closed 在部分 11.3 环境会返回 0 条。
         let browseType: string;
         let param: number | string = 0;
         const requestedStatus = status || 'active';
@@ -490,20 +491,19 @@ export class ZentaoLegacyAPI {
         } else {
             switch (requestedStatus) {
                 case 'all':
-                    // 11.3 的 all 在部分环境不可用，改为分别拉取未关闭与已关闭后合并去重。
-                    browseType = 'all';
+                    browseType = 'allstory';
                     break;
                 case 'active':
-                    browseType = 'unclosed';
+                    browseType = 'activestory';
                     break;
                 case 'draft':
-                    browseType = 'draft';
+                    browseType = 'draftstory';
                     break;
                 case 'closed':
-                    browseType = 'closed';
+                    browseType = 'closedstory';
                     break;
                 case 'changed':
-                    browseType = 'changed';
+                    browseType = 'changedstory';
                     break;
                 default:
                     browseType = 'unclosed';
@@ -553,10 +553,7 @@ export class ZentaoLegacyAPI {
         };
 
         if (!moduleId && requestedStatus === 'all') {
-            // 部分禅道11.3环境 product-browse all 返回0条；分别拉取常用状态更可靠。
-            for (const type of ['unclosed', 'closed', 'draft', 'changed']) {
-                await fetchBrowseType(type, 0);
-            }
+            await fetchBrowseType('allstory', 0);
         } else {
             await fetchBrowseType(browseType, param);
         }
